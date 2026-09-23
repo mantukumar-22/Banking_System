@@ -7,8 +7,8 @@ const router = express.Router();
 
 
 
-router.post('/creatTransetion', authMiddleware, createTransetion);
+router.post('/transetion', authMiddleware, createTransetion);
 
-router.post('/creatTransetion-system',authMiddleware, createInitalTransetion);
+router.post('/creatTransetion-system',systemUserMiddleware, createInitalTransetion);
 
 module.exports = router;

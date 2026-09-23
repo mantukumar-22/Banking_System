@@ -24,72 +24,27 @@ const accountSchema = mongoose.Schema({
 
 accountSchema.index({user : 1, status : 1});
 
-accountSchema.methods.getBalance = async function () {
-    const balanceDate = await ledgerModel.aggregate([
-        { $match : { account : this_id }},
-        {
-            $group : {
-                _id : null,
-                totalDebit : {
-                    $sum : {
-                        $cond : [
-                            {$eq : ['$type', 'DEBIT']},
-                            '$amount',
-                            0
-                        ]
-                    }
-                },
-
-                totalCredit : {
-                    $sum : {
-                        $cond : [
-                            {$eq : ['$type', 'CREDIT']},
-                            '$amount',
-                            0
-                        ]
-                    }
-                }
-            }
-        },
-        {
-            $project : {
-                _id : 0,
-                balance : {
-                    $subtract : [ '$totalCredit', '$totalDebit']
-                }
-            }
-        }
-    ])
-
-    if(balanceDate.length === 0){
-        return 0;
-    }
-
-    return balanceDate[0].getbalance;
-}
-
-
 // accountSchema.methods.getBalance = async function () {
-
-//     const balanceData = await ledgerModel.aggregate([
-//         { $match: { account: this._id } },
+//     const balanceDate = await ledgerModel.aggregate([
+//         { $match : { account : this_id }},
 //         {
-//             $group: {
-//                 _id: null,
-//                 totalDebit: {
-//                     $sum: {
-//                         $cond: [
-//                             { $eq: [ "$type", "DEBIT" ] },
-//                             "$amount",
+//             $group : {
+//                 _id : null,
+//                 totalDebit : {
+//                     $sum : {
+//                         $cond : [
+//                             {$eq : ['$type', 'DEBIT']},
+//                             '$amount',
 //                             0
 //                         ]
 //                     }
 //                 },
-//                 totalCredit: {
-//                     $sum: {
-//                         $cond: [
-//                             { $eq: [ "$type", "CREDIT" ] },
-//                             "$amount",
+
+//                 totalCredit : {
+//                     $sum : {
+//                         $cond : [
+//                             {$eq : ['$type', 'CREDIT']},
+//                             '$amount',
 //                             0
 //                         ]
 //                     }
@@ -97,20 +52,65 @@ accountSchema.methods.getBalance = async function () {
 //             }
 //         },
 //         {
-//             $project: {
-//                 _id: 0,
-//                 balance: { $subtract: [ "$totalCredit", "$totalDebit" ] }
+//             $project : {
+//                 _id : 0,
+//                 balance : {
+//                     $subtract : [ '$totalCredit', '$totalDebit']
+//                 }
 //             }
 //         }
 //     ])
 
-//     if (balanceData.length === 0) {
-//         return 0
+//     if(balanceDate.length === 0){
+//         return 0;
 //     }
 
-//     return balanceData[ 0 ].balance
-
+//     return balanceDate[0].getbalance;
 // }
+
+
+accountSchema.methods.getBalance = async function () {
+
+    const balanceData = await ledgerModel.aggregate([
+        { $match: { account: this._id } },
+        {
+            $group: {
+                _id: null,
+                totalDebit: {
+                    $sum: {
+                        $cond: [
+                            { $eq: [ "$type", "DEBIT" ] },
+                            "$amount",
+                            0
+                        ]
+                    }
+                },
+                totalCredit: {
+                    $sum: {
+                        $cond: [
+                            { $eq: [ "$type", "CREDIT" ] },
+                            "$amount",
+                            0
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                _id: 0,
+                balance: { $subtract: [ "$totalCredit", "$totalDebit" ] }
+            }
+        }
+    ])
+
+    if (balanceData.length === 0) {
+        return 0
+    }
+
+    return balanceData[ 0 ].balance
+
+}
 
 
 

@@ -45,34 +45,58 @@ const authMiddleware = async (req, res, next) => {
 };
 
 const systemUserMiddleware = async (req, res, next) => {
-    try{
-        const token = req.cookies.token || req.hearders.authorization?.split(" ")[1];
-        if(!token) {
+    try {
+        const token =
+            req.cookies?.token ||
+            req.headers.authorization?.split(" ")[1];
+
+        if (!token) {
             return res.status(401).json({
-                success : false,
-                message : "Invalid token, authorization denied"
-            })
+                success: false,
+                message: "Invalid token, authorization denied"
+            });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.id).select("+systemUser");
-        if(!user.systemUser){
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET
+        );
+
+        console.log("Decoded Token:", decoded);
+
+        const user = await User.findById(decoded.id)
+            .select("+systemUser");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        console.log("System User:", user.systemUser);
+
+        if (!user.systemUser) {
             return res.status(403).json({
-                success : false,
-                message : "Access denied, only system user can access this route"
-            })
+                success: false,
+                message: "Access denied, only system user can access this route"
+            });
         }
 
         req.user = user;
+
         next();
-    }
-    catch(err){
+
+    } catch (err) {
+        console.error("System Middleware Error:", err);
+
         return res.status(500).json({
-            success : false,
-            message : "Error in system user middleware"
-        })
+            success: false,
+            message: "Error in system user middleware",
+            error: err.message
+        });
     }
-}
+};
 
 module.exports = {
     authMiddleware,

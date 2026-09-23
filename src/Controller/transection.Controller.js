@@ -5,7 +5,6 @@ const accountModel = require('../models/account.js')
 const emailService = require('../utils/email.service.js');
 const mongoose = require('mongoose');
 
-
 const createTransetion = async (req, res) => {
     try{
 
@@ -91,27 +90,27 @@ const createTransetion = async (req, res) => {
         const session = await mongoose.startSession();
         session.startTransaction();
 
-        const transaction = await transectionModel.create({
+        const transaction = new transactionModel.create({
             fromAccount,
             toAccount,
             amount,
             idempotencyKey,
             status : "pending"
-        }, {session}); 
+        }); 
 
-        const debitLedger = await ledgerModel.create({
+        const debitLedger = await ledgerModel.create([{
             account : fromAccount,
             type : "DEBIT",
             amount : amount,
             transaction : transaction._id
-        }, {session});
+        }], {session});
 
-        const creditLedger = await ledgerModel.create({
+        const creditLedger = await ledgerModel.create([{
             account : toAccount,
             type : "CREDIT",
             amount : amount,
             transaction : transaction._id
-        }, {session});
+        }], {session});
 
         transaction.status = "completed";
         await transaction.save({session});
@@ -138,217 +137,110 @@ const createTransetion = async (req, res) => {
 }
 
 
-// const createInitalTransetion = async (req, res) => {
-//     let session;
-
-//     try {
-//         const { toAccount, amount, idempotencyKey } = req.body;
-
-//         if (!toAccount || !amount || !idempotencyKey) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "All fields are required"
-//             });
-//         }
-
-//         // Check amount
-//         if (amount <= 0) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Amount must be greater than 0"
-//             });
-//         }
-
-//         // Find receiver account
-//         const toUserAccount = await accountModel.findById(toAccount);
-
-//         if (!toUserAccount) {
-//             return res.status(404).json({
-//                 success: false,
-//                 message: "To account not found"
-//             });
-//         }
-
-//         // Find sender account
-//         const fromUserAccount = await accountModel.findOne({
-//             user: req.user._id
-//         });
-
-//         if (!fromUserAccount) {
-//             return res.status(404).json({
-//                 success: false,
-//                 message: "Sender account not found"
-//             });
-//         }
-
-//         // Prevent sending to same account
-//         if (fromUserAccount._id.toString() === toAccount.toString()) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Cannot transfer money to the same account"
-//             });
-//         }
-
-//         // Start session
-//         session = await mongoose.startSession();
-
-//         session.startTransaction();
-
-//         // Create transaction
-//         const transaction = await transectionModel.create(
-//             [
-//                 {
-//                     fromAccount: fromUserAccount._id,
-//                     toAccount: toUserAccount._id,
-//                     amount,
-//                     idempotencyKey,
-//                     status: "pending"
-//                 }
-//             ],
-//             { session }
-//         );
-
-//         const createdTransaction = transaction[0];
-
-//         // Debit ledger
-//         await ledgerModel.create(
-//             [
-//                 {
-//                     account: fromUserAccount._id,
-//                     type: "DEBIT",
-//                     amount,
-//                     transaction: createdTransaction._id
-//                 }
-//             ],
-//             { session }
-//         );
-
-//         // Credit ledger
-//         await ledgerModel.create(
-//             [
-//                 {
-//                     account: toUserAccount._id,
-//                     type: "CREDIT",
-//                     amount,
-//                     transaction: createdTransaction._id
-//                 }
-//             ],
-//             { session }
-//         );
-
-//         // Complete transaction
-//         createdTransaction.status = "completed";
-
-//         await createdTransaction.save({ session });
-
-//         // Commit
-//         await session.commitTransaction();
-//         session.endSession();
-
-//         return res.status(200).json({
-//             success: true,
-//             message: "Initial transaction completed successfully",
-//             transaction: createdTransaction
-//         });
-
-//     } catch (err) {
-
-//         console.log("TRANSACTION ERROR:", err);
-
-//         if (session) {
-//             await session.abortTransaction();
-//             session.endSession();
-//         }
-
-//         return res.status(500).json({
-//             success: false,
-//             message: "Server Error",
-//             error: err.message
-//         });
-//     }
-// };
-
-
 const createInitalTransetion = async (req, res) => {
-
     try {
-        const { toAccount, amount, idempotencyKey } = req.body
+        const { toAccount, amount, idempotencyKey } = req.body;
 
-    if (!toAccount || !amount || !idempotencyKey) {
-        return res.status(400).json({
-            message: "toAccount, amount and idempotencyKey are required"
-        })
-    }
+        // 1. Validate input
+        if (!toAccount || !amount || !idempotencyKey) {
+            return res.status(400).json({
+                success: false,
+                message: "toAccount, amount, and idempotencyKey are required"
+            });
+        }
 
-    const toUserAccount = await accountModel.findOne({
-        _id: toAccount,
-    })
+        // 2. Validate amount
+        if (amount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Amount must be greater than 0"
+            });
+        }
 
-    if (!toUserAccount) {
-        return res.status(400).json({
-            message: "Invalid toAccount"
-        })
-    }
+        // 3. Check receiver account
+        const toUserAccount = await accountModel.findById(toAccount);
 
-    const fromUserAccount = await accountModel.findOne({
-        user: req.user._id
-    })
+        if (!toUserAccount) {
+            return res.status(404).json({
+                success: false,
+                message: "Invalid toAccount"
+            });
+        }
 
-    if (!fromUserAccount) {
-        return res.status(400).json({
-            message: "System user account not found"
-        })
-    }
+        // 4. Check system user's account
+        const fromUserAccount = await accountModel.findOne({
+            user: req.user._id
+        });
 
+        if (!fromUserAccount) {
+            return res.status(404).json({
+                success: false,
+                message: "System user account not found"
+            });
+        }
 
-    const session = await mongoose.startSession()
-    session.startTransaction()
+        // 5. Check duplicate transaction
+        const existingTransaction = await transactionModel.findOne({
+            idempotencyKey
+        });
 
-    const transaction = new transactionModel({
-        fromAccount: fromUserAccount._id,
-        toAccount,
-        amount,
-        idempotencyKey,
-        status: "PENDING"
-    })
+        if (existingTransaction) {
+            return res.status(200).json({
+                success: true,
+                message: "Transaction already exists",
+                transaction: existingTransaction
+            });
+        }
 
-    const debitLedgerEntry = await ledgerModel.create([ {
-        account: fromUserAccount._id,
-        amount: amount,
-        transaction: transaction._id,
-        type: "DEBIT"
-    } ], { session })
+        // 6. Create transaction
+        const transaction = await transactionModel.create({
+            fromAccount: fromUserAccount._id,
+            toAccount: toUserAccount._id,
+            amount: amount,
+            idempotencyKey: idempotencyKey,
+            status: "PENDING"
+        });
 
-    const creditLedgerEntry = await ledgerModel.create([ {
-        account: toAccount,
-        amount: amount,
-        transaction: transaction._id,
-        type: "CREDIT"
-    } ], { session })
+        // 7. Create DEBIT ledger
+        await ledgerModel.create({
+            account: fromUserAccount._id,
+            amount: amount,
+            transaction: transaction._id,
+            type: "DEBIT"
+        });
 
-    transaction.status = "COMPLETED"
-    await transaction.save({ session })
+        // 8. Create CREDIT ledger
+        await ledgerModel.create({
+            account: toUserAccount._id,
+            amount: amount,
+            transaction: transaction._id,
+            type: "CREDIT"
+        });
 
-    await session.commitTransaction()
-    session.endSession()
+        // 9. Complete transaction
+        transaction.status = "COMPLETED";
 
-    return res.status(201).json({
-        message: "Initial funds transaction completed successfully",
-        transaction: transaction
-    })
+        await transaction.save();
 
-    } catch (err) {
+        return res.status(201).json({
+            success: true,
+            message: "Money added successfully",
+            transaction
+        });
 
-        console.log("TRANSACTION ERROR:", err);
+    } catch (error) {
+
+        console.error("Initial Transaction Error:", error);
 
         return res.status(500).json({
             success: false,
             message: "Server Error",
-            error: err.message
+            error: error.message
         });
-
     }
 };
+
+
 
 
 
