@@ -13,6 +13,10 @@ const app = express();
 app.use(express.json());
 app.use(cookieParsser());
 
+app.get("/", (req, res) => {
+    res.send("Welcome to the Bank System API");
+});
+
 app.use("/api/auth", authRouter)
 app.use("/api/accounts", accountRouter)
 app.use("/api/transactions", transectionRouter)
