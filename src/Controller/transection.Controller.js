@@ -105,6 +105,8 @@ const createTransetion = async (req, res) => {
             transaction : transaction._id
         }], {session});
 
+        
+
         const creditLedger = await ledgerModel.create([{
             account : toAccount,
             type : "CREDIT",
